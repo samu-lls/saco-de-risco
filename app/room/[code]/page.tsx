@@ -9,9 +9,9 @@ const playfair = Playfair_Display({ subsets: ["latin"], style: ["normal", "itali
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500"] });
 
 export default function RoomPage() {
-  const params = useParams();
+  const params = useParams() as { code: string };
   const router = useRouter();
-  const roomCode = params.code as string;
+  const roomCode = params.code;
 
   const hasInitialized = useRef(false);
 
