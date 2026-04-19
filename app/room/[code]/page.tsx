@@ -18,6 +18,7 @@ export default function RoomPage() {
   const hasInitialized = useRef(false);
 
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null); // Novo Estado de Erro
   const [me, setMe] = useState<any>(null);
   const [room, setRoom] = useState<any>(null);
   const [players, setPlayers] = useState<any[]>([]);
@@ -34,9 +35,7 @@ export default function RoomPage() {
 
     const initGame = async () => {
       try {
-        // 1. Busca a sala com PROTEÇÃO (maybeSingle evita erro se não existir)
         let { data: roomData, error: roomError } = await supabase.from("rooms").select("*").eq("code", roomCode).maybeSingle();
-        
         if (roomError) throw new Error("Erro ao buscar sala: " + roomError.message);
 
         if (!roomData) {
@@ -45,7 +44,6 @@ export default function RoomPage() {
           roomData = newRoom;
         }
         
-        // 2. Busca o jogador com PROTEÇÃO
         let { data: playerData, error: playerError } = await supabase
           .from("players")
           .select("*")
@@ -53,9 +51,8 @@ export default function RoomPage() {
           .eq("name", playerName)
           .maybeSingle();
 
-        if (playerError) throw new Error("Erro ao buscar jogador: " + playerError.message);
+        if (playerError) throw new Error("Erro de dados duplicados. Limpe o banco de dados.");
 
-        // Se não existir, cria um novo
         if (!playerData) {
           if (roomData.status !== 'lobby') {
             alert("Partida em andamento! Você não pode entrar agora.");
@@ -80,8 +77,6 @@ export default function RoomPage() {
           if (data) setPlayers(data);
         };
         await fetchPlayers();
-        
-        // SUCESSO! Libera a tela
         setLoading(false);
 
         const channel = supabase.channel(`room_${roomData.id}`)
@@ -98,9 +93,8 @@ export default function RoomPage() {
 
         return () => { supabase.removeChannel(channel); };
       } catch (error: any) {
-        // SE DER ERRO, VAI APARECER NA TELA E PARAR O LOADING!
         console.error("Erro FATAL ao inicializar:", error);
-        alert("Ops, algo deu errado: " + error.message);
+        setErrorMsg(error.message); // Salva a mensagem para mostrar na tela
         setLoading(false); 
       }
     };
@@ -132,7 +126,7 @@ export default function RoomPage() {
   };
 
   // ==========================================
-  // LÓGICA DE TURNOS E JOGO BASE (V3.0)
+  // LÓGICA DE JOGO BASE (V3.0)
   // ==========================================
   const isMyTurn = room?.current_turn_player_id === me?.id;
   const amIDead = me?.hp <= 0;
@@ -216,21 +210,38 @@ export default function RoomPage() {
     await supabase.from("rooms").update({ current_turn_player_id: nextPlayer.id }).eq("id", room.id);
   };
 
+
+  // ==========================================
+  // RENDERIZAÇÃO DAS TELAS
+  // ==========================================
   if (loading) return <div className={`min-h-screen bg-[#0a0a0a] flex items-center justify-center text-[rgba(255,255,255,0.5)] ${inter.className}`}>Conectando aos servidores...</div>;
 
+  // TELA DE ERRO (Trava Anti-Fantasma)
+  if (errorMsg || !room || !me) {
+    return (
+      <main className={`min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center p-6 text-center ${inter.className}`}>
+        <h1 className={`${playfair.className} text-4xl text-red-500 mb-4`}>Sessão Interrompida</h1>
+        <p className="text-[rgba(255,255,255,0.6)] max-w-md mb-8">{errorMsg || "Não foi possível carregar os dados da sala."}</p>
+        <button onClick={() => router.push("/")} className="bg-white text-black px-8 py-3 rounded-[6px] font-medium hover:bg-gray-200 transition-all">
+          Voltar para o Início
+        </button>
+      </main>
+    );
+  }
+
   // TELA 1: LOBBY
-  if (room?.status === 'lobby') {
+  if (room.status === 'lobby') {
     return (
       <main className={`min-h-screen bg-[#0a0a0a] text-white p-6 md:p-12 flex flex-col items-center justify-center ${inter.className}`}>
         <div className="max-w-md w-full bg-[#111111] border border-[rgba(255,255,255,0.07)] rounded-[10px] p-8 text-center">
           <p className="text-[11px] tracking-[0.08em] text-[rgba(255,255,255,0.4)] uppercase mb-2">Código da Sala</p>
-          <h1 className={`${playfair.className} text-5xl text-[#d4a853] tracking-tight mb-8`}>{room?.code}</h1>
+          <h1 className={`${playfair.className} text-5xl text-[#d4a853] tracking-tight mb-8`}>{room.code}</h1>
           
           <div className="flex flex-col gap-3 mb-8">
             <h3 className="text-[13px] text-left text-[rgba(255,255,255,0.5)] border-b border-[rgba(255,255,255,0.07)] pb-2 mb-2">Jogadores Conectados ({players.length})</h3>
             {players.map(p => (
               <div key={p.id} className="flex justify-between items-center bg-[#0a0a0a] p-3 rounded-[6px] border border-[rgba(255,255,255,0.02)]">
-                <span className="font-medium text-[15px]">{p.name} {p.id === me?.id && "(Você)"}</span>
+                <span className="font-medium text-[15px]">{p.name} {p.id === me.id && "(Você)"}</span>
                 <span className={`text-xs px-2 py-1 rounded-[4px] ${p.is_ready ? 'bg-green-900/30 text-green-500' : 'bg-[#111111] text-[rgba(255,255,255,0.4)]'}`}>
                   {p.is_ready ? 'PRONTO' : 'AGUARDANDO'}
                 </span>
@@ -240,9 +251,9 @@ export default function RoomPage() {
 
           <button 
             onClick={handleToggleReady}
-            className={`w-full h-[52px] font-medium text-[15px] rounded-[6px] transition-all active:scale-[0.99] ${me?.is_ready ? 'bg-[#1a1a1a] text-white border border-[rgba(255,255,255,0.1)] hover:bg-[#222]' : 'bg-white text-[#0a0a0a] hover:bg-gray-200'}`}
+            className={`w-full h-[52px] font-medium text-[15px] rounded-[6px] transition-all active:scale-[0.99] ${me.is_ready ? 'bg-[#1a1a1a] text-white border border-[rgba(255,255,255,0.1)] hover:bg-[#222]' : 'bg-white text-[#0a0a0a] hover:bg-gray-200'}`}
           >
-            {me?.is_ready ? 'Cancelar Pronto' : 'Estou Pronto'}
+            {me.is_ready ? 'Cancelar Pronto' : 'Estou Pronto'}
           </button>
           <p className="text-[11px] text-[rgba(255,255,255,0.3)] mt-4">A partida inicia quando todos estiverem prontos. (Mín. 2 jogadores)</p>
         </div>
@@ -267,17 +278,17 @@ export default function RoomPage() {
         <div>
           <p className="text-[11px] tracking-[0.08em] text-[rgba(255,255,255,0.4)] uppercase mb-1">Partida em Andamento</p>
           <h1 className={`${playfair.className} text-3xl text-white tracking-tight`}>
-            Sala <em className="text-[#d4a853] italic not-italic-numbers">{room?.code}</em>
+            Sala <em className="text-[#d4a853] italic not-italic-numbers">{room.code}</em>
           </h1>
         </div>
         <div className="text-right">
           <p className="text-[11px] tracking-[0.08em] text-[rgba(255,255,255,0.4)] uppercase mb-1">Saco de Risco</p>
           <div className="flex gap-4 text-sm font-medium">
-            <span className="text-green-500">{room?.bag_greens} V</span>
-            <span className="text-blue-500">{room?.bag_blues} A</span>
-            <span className="text-yellow-500">{room?.bag_batteries} B</span>
-            <span className="text-red-500">{room?.bag_reds} C</span>
-            <span className="text-purple-500">{room?.bag_viruses} Vi</span>
+            <span className="text-green-500">{room.bag_greens} V</span>
+            <span className="text-blue-500">{room.bag_blues} A</span>
+            <span className="text-yellow-500">{room.bag_batteries} B</span>
+            <span className="text-red-500">{room.bag_reds} C</span>
+            <span className="text-purple-500">{room.bag_viruses} Vi</span>
           </div>
         </div>
       </header>
