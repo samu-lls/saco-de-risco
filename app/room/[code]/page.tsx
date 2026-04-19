@@ -38,7 +38,6 @@ export default function RoomPage() {
         let { data: roomData, error: roomError } = await supabase.from("rooms").select("*").eq("code", roomCode).maybeSingle();
         if (roomError) throw new Error("Erro ao buscar sala: " + roomError.message);
 
-        // SE A SALA NÃO EXISTE, CRIA FORÇANDO TODOS OS VALORES INICIAIS
         if (!roomData) {
           const { data: newRoom, error: insertRoomError } = await supabase.from("rooms").insert({ 
             code: roomCode,
@@ -64,7 +63,6 @@ export default function RoomPage() {
         if (playerError) throw new Error("Erro de dados duplicados. Limpe o banco de dados.");
 
         if (!playerData) {
-          // CORREÇÃO: Programação defensiva. Se for null, assume 'lobby'.
           const currentStatus = roomData.status || 'lobby';
           
           if (currentStatus !== 'lobby') {
@@ -140,7 +138,7 @@ export default function RoomPage() {
   };
 
   // ==========================================
-  // LÓGICA DE JOGO BASE (V3.0)
+  // LÓGICA DE JOGO BASE (MOTOR CORRIGIDO)
   // ==========================================
   const isMyTurn = room?.current_turn_player_id === me?.id;
   const amIDead = me?.hp <= 0;
@@ -163,6 +161,10 @@ export default function RoomPage() {
     const totalInBag = room.bag_greens + room.bag_blues + room.bag_reds + room.bag_batteries + room.bag_viruses;
     if (totalInBag <= 0) return alert("O Saco está vazio!");
 
+    // PROTEÇÃO ABSOLUTA DE HP: Busca no banco para evitar delay de cliques rápidos
+    const { data: dbPlayer } = await supabase.from("players").select("hp").eq("id", me.id).single();
+    let currentHp = dbPlayer?.hp || me.hp;
+
     const roll = Math.random() * totalInBag;
     let newBagGreens = room.bag_greens, newBagBlues = room.bag_blues, newBagReds = room.bag_reds;
     let newBagBatteries = room.bag_batteries, newBagViruses = room.bag_viruses;
@@ -170,38 +172,55 @@ export default function RoomPage() {
     let newTurnGreens = me.turn_greens, newTurnBlues = me.turn_blues, newRedsInTurn = me.reds_in_turn;
     let newTurnBatteries = me.turn_batteries, newVirusesInTurn = me.viruses_in_turn;
     
-    let newHp = me.hp;
     let newForcedDraws = Math.max(0, me.forced_draws - 1);
     
     let isExplosion = false;
     let isVirusSkip = false;
 
+    // Sorteio de Itens
     if (roll < newBagGreens) { newBagGreens--; newTurnGreens++; }
     else if (roll < newBagGreens + newBagBlues) { newBagBlues--; newTurnBlues++; }
     else if (roll < newBagGreens + newBagBlues + newBagBatteries) { newBagBatteries--; newTurnBatteries++; }
     else if (roll < newBagGreens + newBagBlues + newBagBatteries + newBagViruses) { 
       newBagViruses--; newVirusesInTurn++;
-      if (newVirusesInTurn >= 2) {
-        isVirusSkip = true; newTurnGreens = 0; newTurnBlues = 0; newTurnBatteries = 0; newRedsInTurn = 0; newVirusesInTurn = 0; newForcedDraws = 0;
-      }
+      if (newVirusesInTurn >= 2) isVirusSkip = true;
     } else {
       newBagReds--; newRedsInTurn++;
       if (newRedsInTurn >= 2) {
-        isExplosion = true; newHp--; newTurnGreens = 0; newTurnBlues = 0; newTurnBatteries = 0; newRedsInTurn = 0; newVirusesInTurn = 0; newForcedDraws = 0; 
+        isExplosion = true; 
+        currentHp--; // Recebe o dano no HP verificado
       }
     }
 
-    await supabase.from("rooms").update({ bag_greens: newBagGreens, bag_blues: newBagBlues, bag_reds: newBagReds, bag_batteries: newBagBatteries, bag_viruses: newBagViruses }).eq("id", room.id);
-    await supabase.from("players").update({ hp: newHp, turn_greens: newTurnGreens, turn_blues: newTurnBlues, turn_batteries: newTurnBatteries, reds_in_turn: newRedsInTurn, viruses_in_turn: newVirusesInTurn, forced_draws: newForcedDraws }).eq("id", me.id);
+    // REGRA DE PUNIÇÃO: Devolve TUDO o que estava na mão para o saco se perder a vez
+    if (isExplosion || isVirusSkip) {
+      newBagGreens += newTurnGreens;
+      newBagBlues += newTurnBlues;
+      newBagBatteries += newTurnBatteries;
+      newBagReds += newRedsInTurn;
+      newBagViruses += newVirusesInTurn;
 
+      newTurnGreens = 0; newTurnBlues = 0; newTurnBatteries = 0; newRedsInTurn = 0; newVirusesInTurn = 0; newForcedDraws = 0; 
+    }
+
+    // Salva no banco de forma segura
+    await supabase.from("rooms").update({ 
+      bag_greens: newBagGreens, bag_blues: newBagBlues, bag_reds: newBagReds, bag_batteries: newBagBatteries, bag_viruses: newBagViruses 
+    }).eq("id", room.id);
+
+    await supabase.from("players").update({ 
+      hp: currentHp, turn_greens: newTurnGreens, turn_blues: newTurnBlues, turn_batteries: newTurnBatteries, reds_in_turn: newRedsInTurn, viruses_in_turn: newVirusesInTurn, forced_draws: newForcedDraws 
+    }).eq("id", me.id);
+
+    // Finaliza as ações
     if (isExplosion) {
-      alert("💥 CURTO-CIRCUITO! 2º Curto. 1 Dano e turno perdido.");
-      if (newHp <= 0) {
+      alert("💥 CURTO-CIRCUITO! 2º Curto. 1 Dano recebido. Todos os itens que você sacou voltaram para o Saco.");
+      if (currentHp <= 0) {
          const nextP = getNextAlivePlayer();
          if (nextP) await supabase.from("rooms").update({ current_turn_player_id: nextP.id }).eq("id", room.id);
       } else { await handlePassTurn(true); }
     } else if (isVirusSkip) {
-      alert("🦠 VÍRUS DETECTADO! 2º Vírus. Turno perdido (sem dano).");
+      alert("🦠 VÍRUS DETECTADO! 2º Vírus. Turno perdido (sem dano). Todos os itens que você sacou voltaram para o Saco.");
       await handlePassTurn(true);
     }
   };
@@ -214,16 +233,27 @@ export default function RoomPage() {
     if (!nextPlayer) return;
 
     if (!isFromExplosion) {
+      // REGRA DE GUARDAR (Passou normal): Devolve SÓ os perigos pro saco. Guarda os materiais no cofre.
+      const returnReds = me.reds_in_turn;
+      const returnViruses = me.viruses_in_turn;
+
+      await supabase.from("rooms").update({
+        bag_reds: room.bag_reds + returnReds,
+        bag_viruses: room.bag_viruses + returnViruses,
+        current_turn_player_id: nextPlayer.id
+      }).eq("id", room.id);
+
       await supabase.from("players").update({ 
         greens: me.greens + me.turn_greens, 
         blues: me.blues + me.turn_blues, 
         batteries: me.batteries + me.turn_batteries,
         turn_greens: 0, turn_blues: 0, turn_batteries: 0, reds_in_turn: 0, viruses_in_turn: 0 
       }).eq("id", me.id);
+    } else {
+      // Se for explosão/vírus, a devolução já foi feita e a mão já foi zerada na função handleDraw.
+      await supabase.from("rooms").update({ current_turn_player_id: nextPlayer.id }).eq("id", room.id);
     }
-    await supabase.from("rooms").update({ current_turn_player_id: nextPlayer.id }).eq("id", room.id);
   };
-
 
   // ==========================================
   // RENDERIZAÇÃO DAS TELAS
