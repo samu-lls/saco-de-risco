@@ -11,19 +11,19 @@ const playfair = Playfair_Display({ subsets: ["latin"], style: ["normal", "itali
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500"] });
 
 // ==========================================
-// BANCO DE DADOS DE ITENS (MERCADO NEGRO)
+// BANCO DE DADOS DE ITENS (MERCADO NEGRO) - BALANCEADO
 // ==========================================
 const SHOP_ITEMS = [
-  { id: 'firewall', name: 'Firewall', type: 'defense', cost: { green: 2, blue: 1, yellow: 0 }, desc: 'Absorve 1 Dano letal ou ataque inimigo e quebra.' },
-  { id: 'patch', name: 'Patch de Seg.', type: 'heal', cost: { green: 0, blue: 1, yellow: 2 }, desc: 'Recupera +1 HP instantaneamente.' },
-  { id: 'vpn', name: 'VPN', type: 'utility', cost: { green: 0, blue: 1, yellow: 1 }, desc: 'Pula seu turno imediatamente com segurança.' },
-  { id: 'trojan', name: 'Trojan', type: 'attack', cost: { green: 1, blue: 1, yellow: 1 }, desc: 'Força um alvo a sacar 3 vezes no turno dele.' },
-  { id: 'phishing', name: 'Phishing', type: 'attack', cost: { green: 2, blue: 1, yellow: 0 }, desc: 'Rouba 2 itens do cofre de um inimigo.' },
-  { id: 'reboot', name: 'Reboot', type: 'utility', cost: { green: 0, blue: 1, yellow: 1 }, desc: 'Devolve 2 Curtos/Vírus da sua mão pro Saco.' },
-  { id: 'zeroday', name: 'Zero-Day', type: 'fatal', cost: { green: 0, blue: 2, yellow: 3 }, desc: 'Retira 1 HP do alvo instantaneamente.' },
-  { id: 'ddos', name: 'DDoS Automático', type: 'fatal', cost: { green: 2, blue: 2, yellow: 1 }, desc: 'Aplica +2 Saques Obrigatórios em TODOS.' },
-  { id: 'ransomware', name: 'Ransomware', type: 'fatal', cost: { green: 2, blue: 2, yellow: 2 }, desc: 'Rouba 1 HP do alvo (causa dano a ele e cura você).' },
-  { id: 'logicbomb', name: 'Bomba Lógica', type: 'fatal', cost: { green: 1, blue: 1, yellow: 3 }, desc: 'Causa 1 Dano a TODOS (incluindo você). Ignora Firewall.' }
+  { id: 'firewall', name: 'Firewall', type: 'defense', cost: { green: 2, blue: 0, yellow: 2 }, desc: 'Absorve 1 Dano letal ou ataque inimigo e quebra.' },
+  { id: 'patch', name: 'Patch de Seg.', type: 'heal', cost: { green: 1, blue: 0, yellow: 2 }, desc: 'Recupera +1 HP instantaneamente.' },
+  { id: 'vpn', name: 'VPN', type: 'utility', cost: { green: 1, blue: 1, yellow: 0 }, desc: 'Pula seu turno imediatamente com segurança.' },
+  { id: 'trojan', name: 'Trojan', type: 'attack', cost: { green: 2, blue: 0, yellow: 1 }, desc: 'Força um alvo a sacar 3 vezes no turno dele.' },
+  { id: 'phishing', name: 'Phishing', type: 'attack', cost: { green: 1, blue: 1, yellow: 1 }, desc: 'Rouba 2 itens do cofre de um inimigo.' },
+  { id: 'reboot', name: 'Reboot', type: 'utility', cost: { green: 0, blue: 0, yellow: 2 }, desc: 'Devolve 2 Curtos/Vírus da sua mão pro Saco.' },
+  { id: 'zeroday', name: 'Zero-Day', type: 'fatal', cost: { green: 1, blue: 2, yellow: 2 }, desc: 'Retira 1 HP do alvo instantaneamente.' },
+  { id: 'ddos', name: 'DDoS Automático', type: 'fatal', cost: { green: 2, blue: 1, yellow: 2 }, desc: 'Aplica +2 Saques Obrigatórios em TODOS.' },
+  { id: 'ransomware', name: 'Ransomware', type: 'fatal', cost: { green: 3, blue: 1, yellow: 2 }, desc: 'Rouba 1 HP do alvo (causa dano a ele e cura você).' },
+  { id: 'logicbomb', name: 'Bomba Lógica', type: 'fatal', cost: { green: 1, blue: 2, yellow: 2 }, desc: 'Causa 1 Dano a TODOS (incluindo você). Ignora Firewall.' }
 ];
 
 export default function RoomPage() {
@@ -43,7 +43,6 @@ export default function RoomPage() {
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [targetingItem, setTargetingItem] = useState<string | null>(null);
   
-  // ESTADO DO GUIA HACKER
   const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
@@ -341,10 +340,10 @@ export default function RoomPage() {
         if (newRedsInTurn >= 2) { isExplosion = true; currentHp--; }
       }
 
-      // SISTEMA ANTI-SOFTLOCK: Reposição de Materiais ao chegar em ZERO
-      if (newBagGreens === 0) { newBagGreens += 10; alert("⚠️ O Saco ficou sem PCBs! A IA Injetou +10 PCBs de emergência."); }
-      if (newBagBlues === 0) { newBagBlues += 10; alert("⚠️ O Saco ficou sem Blueprints! A IA Injetou +10 Blueprints de emergência."); }
-      if (newBagBatteries === 0) { newBagBatteries += 10; alert("⚠️ O Saco ficou sem Baterias! A IA Injetou +10 Baterias de emergência."); }
+      // SISTEMA ANTI-SOFTLOCK: Reposição
+      if (newBagGreens === 0) { newBagGreens += 10; alert("⚠️ A IA Injetou +10 PCBs de emergência no Saco."); }
+      if (newBagBlues === 0) { newBagBlues += 10; alert("⚠️ A IA Injetou +10 Blueprints de emergência no Saco."); }
+      if (newBagBatteries === 0) { newBagBatteries += 10; alert("⚠️ A IA Injetou +10 Baterias de emergência no Saco."); }
 
       let updatedMyInv = [...(dbMe.inventory || [])];
       let firewallTriggered = false;
@@ -423,7 +422,7 @@ export default function RoomPage() {
   };
 
   // ==========================================
-  // LÓGICA DO MERCADO NEGRO (CRAFTING)
+  // LÓGICA DO LOBBY & ESCALONAMENTO DINÂMICO
   // ==========================================
   const handleToggleReady = async () => {
     if (isProcessing) return;
@@ -433,9 +432,23 @@ export default function RoomPage() {
       await supabase.from("players").update({ is_ready: newReadyState }).eq("id", me.id);
       const updatedPlayers = players.map(p => p.id === me.id ? { ...p, is_ready: newReadyState } : p);
       const allReady = updatedPlayers.length > 1 && updatedPlayers.every(p => p.is_ready);
+      
       if (allReady && room.status === 'lobby') {
         const firstPlayer = updatedPlayers[0];
-        await supabase.from("rooms").update({ status: 'playing', current_turn_player_id: firstPlayer.id, round_count: 1 }).eq("id", room.id);
+        const pCount = updatedPlayers.length;
+        
+        // CÁLCULO INTELIGENTE DO SACO BASEADO NA QTD DE JOGADORES
+        await supabase.from("rooms").update({ 
+          status: 'playing', 
+          current_turn_player_id: firstPlayer.id, 
+          round_count: 1,
+          bag_greens: pCount * 6,
+          bag_blues: pCount * 4,
+          bag_batteries: pCount * 6,
+          bag_reds: pCount * 1, // Ex: 2 curtos para 2 jogadores
+          bag_viruses: pCount * 1 // Ex: 2 vírus para 2 jogadores
+        }).eq("id", room.id);
+
       } else if (updatedPlayers.length === 1 && newReadyState) {
         alert("Aguarde mais jogadores.");
         await supabase.from("players").update({ is_ready: false }).eq("id", me.id);
@@ -443,6 +456,7 @@ export default function RoomPage() {
     } finally { setIsProcessing(false); }
   };
 
+  // LÓGICA DO MERCADO NEGRO (CRAFTING)
   useEffect(() => {
     if (room?.status === 'crafting' && me && !me.has_finished_crafting && (!me.shop_slots || me.shop_slots.length === 0)) {
       const shuffled = [...SHOP_ITEMS].sort(() => 0.5 - Math.random());
@@ -495,7 +509,7 @@ export default function RoomPage() {
 
   return (
     <>
-      {/* MODAL DO GUIA HACKER (Abre por cima de tudo) */}
+      {/* MODAL DO GUIA HACKER */}
       {showGuide && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 md:p-12 backdrop-blur-sm overflow-y-auto">
           <div className="bg-[#111111] border border-[#d4a853]/30 w-full max-w-3xl rounded-[10px] p-6 relative">
@@ -542,7 +556,7 @@ export default function RoomPage() {
                 </div>
               ))}
             </div>
-            <button onClick={handleToggleReady} disabled={isProcessing} className={`w-full h-[52px] font-medium text-[15px] rounded-[6px] transition-all ${me.is_ready ? 'bg-[#1a1a1a] text-white border border-[rgba(255,255,255,0.1)]' : 'bg-white text-[#0a0a0a]'}`}>
+            <button onClick={handleToggleReady} disabled={isProcessing} className={`w-full h-[52px] font-medium text-[15px] rounded-[6px] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${me.is_ready ? 'bg-[#1a1a1a] text-white border border-[rgba(255,255,255,0.1)]' : 'bg-white text-[#0a0a0a]'}`}>
               {isProcessing ? 'Processando...' : (me.is_ready ? 'Cancelar Pronto' : 'Estou Pronto')}
             </button>
           </div>
@@ -600,9 +614,9 @@ export default function RoomPage() {
                         
                         <button 
                           onClick={() => handleBuyItem(item)} disabled={!canAfford || isProcessing}
-                          className={`w-full py-3 rounded-[6px] text-sm font-medium transition-all ${canAfford ? 'bg-white text-black hover:bg-gray-200 active:scale-[0.98]' : 'bg-[#0f0f0f] text-[rgba(255,255,255,0.2)] border border-[rgba(255,255,255,0.05)] cursor-not-allowed'}`}
+                          className={`w-full py-3 rounded-[6px] text-sm font-medium transition-all ${canAfford ? 'bg-white text-black hover:bg-gray-200 active:scale-[0.98]' : 'bg-[#0f0f0f] text-[rgba(255,255,255,0.2)] border border-[rgba(255,255,255,0.05)] cursor-not-allowed disabled:opacity-50'}`}
                         >
-                          {canAfford ? 'Fabricar Item' : 'Recursos Insuficientes'}
+                          {isProcessing ? 'Aguarde...' : (canAfford ? 'Fabricar Item' : 'Recursos Insuficientes')}
                         </button>
                       </div>
                     </div>
@@ -610,7 +624,7 @@ export default function RoomPage() {
                 })}
               </div>
 
-              <button onClick={handleFinishCrafting} disabled={isProcessing} className="self-center bg-[#d4a853] text-black px-12 py-4 rounded-[6px] font-medium hover:bg-[#e0b767] transition-all text-lg active:scale-[0.98] shadow-[0_0_20px_rgba(212,168,83,0.2)]">
+              <button onClick={handleFinishCrafting} disabled={isProcessing} className="self-center bg-[#d4a853] text-black px-12 py-4 rounded-[6px] font-medium hover:bg-[#e0b767] transition-all text-lg active:scale-[0.98] shadow-[0_0_20px_rgba(212,168,83,0.2)] disabled:opacity-50 disabled:cursor-not-allowed">
                 {isProcessing ? 'Processando...' : 'Finalizar Compras'}
               </button>
             </div>
@@ -679,15 +693,19 @@ export default function RoomPage() {
                   
                   {!isMyTurn && activePlayer && !onlineUsers.includes(activePlayer.id) && (
                     <div className="w-full max-w-md mt-4 p-4 border border-red-500/30 bg-red-900/10 rounded-[6px] text-center">
-                      <button onClick={() => handleKickOffline(activePlayer)} className="bg-red-500/20 text-red-500 px-4 py-2 rounded text-xs uppercase w-full">Expulsar Offline</button>
+                      <button onClick={() => handleKickOffline(activePlayer)} className="bg-red-500/20 text-red-500 px-4 py-2 rounded text-xs uppercase w-full hover:bg-red-500/40">Expulsar Offline</button>
                     </div>
                   )}
 
                   {isMyTurn && (
                     <div className="flex flex-col gap-4 w-full max-w-md mt-2">
                       <div className="flex gap-4">
-                          <button onClick={handleDraw} disabled={isProcessing} className="flex-1 h-[52px] bg-white text-[#0a0a0a] font-medium rounded hover:bg-gray-200">Sacar</button>
-                          <button onClick={handlePassTurn} disabled={me?.forced_draws > 0 || isProcessing} className="flex-1 h-[52px] bg-[#0f0f0f] border border-[rgba(255,255,255,0.12)] text-white font-medium rounded hover:border-[rgba(255,255,255,0.35)]">Passar</button>
+                          <button onClick={handleDraw} disabled={isProcessing} className="flex-1 h-[52px] bg-white text-[#0a0a0a] font-medium rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                            {isProcessing ? 'Aguarde...' : 'Sacar'}
+                          </button>
+                          <button onClick={handlePassTurn} disabled={me?.forced_draws > 0 || isProcessing} className="flex-1 h-[52px] bg-[#0f0f0f] border border-[rgba(255,255,255,0.12)] text-white font-medium rounded hover:border-[rgba(255,255,255,0.35)] disabled:opacity-50 disabled:cursor-not-allowed">
+                            {isProcessing ? 'Aguarde...' : 'Passar'}
+                          </button>
                       </div>
                       {me?.forced_draws > 0 && <div className="text-center text-red-500 text-xs animate-pulse font-medium mt-1">SAQUES OBRIGATÓRIOS RESTANTES: {me.forced_draws}</div>}
                     </div>
