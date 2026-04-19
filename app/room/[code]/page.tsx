@@ -18,7 +18,7 @@ export default function RoomPage() {
   const hasInitialized = useRef(false);
 
   const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null); // Novo Estado de Erro
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [me, setMe] = useState<any>(null);
   const [room, setRoom] = useState<any>(null);
   const [players, setPlayers] = useState<any[]>([]);
@@ -38,8 +38,18 @@ export default function RoomPage() {
         let { data: roomData, error: roomError } = await supabase.from("rooms").select("*").eq("code", roomCode).maybeSingle();
         if (roomError) throw new Error("Erro ao buscar sala: " + roomError.message);
 
+        // SE A SALA NÃO EXISTE, CRIA FORÇANDO TODOS OS VALORES INICIAIS
         if (!roomData) {
-          const { data: newRoom, error: insertRoomError } = await supabase.from("rooms").insert({ code: roomCode }).select().single();
+          const { data: newRoom, error: insertRoomError } = await supabase.from("rooms").insert({ 
+            code: roomCode,
+            status: 'lobby',
+            bag_greens: 15,
+            bag_blues: 10,
+            bag_reds: 5,
+            bag_batteries: 15,
+            bag_viruses: 5
+          }).select().single();
+          
           if (insertRoomError) throw new Error("Erro ao criar sala: " + insertRoomError.message);
           roomData = newRoom;
         }
@@ -54,7 +64,10 @@ export default function RoomPage() {
         if (playerError) throw new Error("Erro de dados duplicados. Limpe o banco de dados.");
 
         if (!playerData) {
-          if (roomData.status !== 'lobby') {
+          // CORREÇÃO: Programação defensiva. Se for null, assume 'lobby'.
+          const currentStatus = roomData.status || 'lobby';
+          
+          if (currentStatus !== 'lobby') {
             alert("Partida em andamento! Você não pode entrar agora.");
             router.push("/");
             return;
@@ -63,6 +76,7 @@ export default function RoomPage() {
           const { data: newPlayer, error: insertPlayerError } = await supabase.from("players").insert({
             room_id: roomData.id,
             name: playerName,
+            is_ready: false
           }).select().single();
           
           if (insertPlayerError) throw new Error("Erro ao criar jogador: " + insertPlayerError.message);
@@ -94,7 +108,7 @@ export default function RoomPage() {
         return () => { supabase.removeChannel(channel); };
       } catch (error: any) {
         console.error("Erro FATAL ao inicializar:", error);
-        setErrorMsg(error.message); // Salva a mensagem para mostrar na tela
+        setErrorMsg(error.message);
         setLoading(false); 
       }
     };
@@ -216,7 +230,6 @@ export default function RoomPage() {
   // ==========================================
   if (loading) return <div className={`min-h-screen bg-[#0a0a0a] flex items-center justify-center text-[rgba(255,255,255,0.5)] ${inter.className}`}>Conectando aos servidores...</div>;
 
-  // TELA DE ERRO (Trava Anti-Fantasma)
   if (errorMsg || !room || !me) {
     return (
       <main className={`min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center p-6 text-center ${inter.className}`}>
@@ -230,7 +243,8 @@ export default function RoomPage() {
   }
 
   // TELA 1: LOBBY
-  if (room.status === 'lobby') {
+  const currentStatus = room.status || 'lobby';
+  if (currentStatus === 'lobby') {
     return (
       <main className={`min-h-screen bg-[#0a0a0a] text-white p-6 md:p-12 flex flex-col items-center justify-center ${inter.className}`}>
         <div className="max-w-md w-full bg-[#111111] border border-[rgba(255,255,255,0.07)] rounded-[10px] p-8 text-center">
