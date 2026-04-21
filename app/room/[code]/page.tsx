@@ -1569,6 +1569,21 @@ export default function RoomPage() {
                           <span className="stat-lbl">Vírus</span>
                         </div>
                       </div>
+
+                      {/* Saco de Risco — visível para espectadores */}
+                      <div
+                        className="rounded-lg px-4 py-2.5 w-full max-w-sm"
+                        style={{ background: 'var(--bg)', border: '1px solid rgba(255,255,255,0.05)' }}
+                      >
+                        <p className="section-label mb-2" style={{ letterSpacing: '0.15em', color: 'rgba(200,208,218,0.3)' }}>Saco de Risco</p>
+                        <div className="flex gap-3 flex-wrap">
+                          <span className="bag-item" style={{ color: '#00ff88' }}>{room.bag_greens}<span className="section-label ml-1" style={{ color: 'rgba(0,255,136,0.5)' }}>PCB</span></span>
+                          <span className="bag-item" style={{ color: '#00aaff' }}>{room.bag_blues}<span className="section-label ml-1" style={{ color: 'rgba(0,170,255,0.5)' }}>BLUE</span></span>
+                          <span className="bag-item" style={{ color: '#eab308' }}>{room.bag_batteries}<span className="section-label ml-1" style={{ color: 'rgba(234,179,8,0.5)' }}>BAT</span></span>
+                          <span className="bag-item" style={{ color: '#ff4444' }}>{room.bag_reds}<span className="section-label ml-1" style={{ color: 'rgba(255,68,68,0.5)' }}>CURTO</span></span>
+                          <span className="bag-item" style={{ color: '#cc44ff' }}>{room.bag_viruses}<span className="section-label ml-1" style={{ color: 'rgba(204,68,255,0.5)' }}>VÍRUS</span></span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
