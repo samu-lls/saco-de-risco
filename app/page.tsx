@@ -97,25 +97,25 @@ export default function Home() {
       </div>
 
       {/* ── Top buttons ── */}
-      <div className="fixed top-6 right-6 flex gap-2" style={{ zIndex: 10 }}>
+      <div className="fixed top-6 right-6 flex gap-2" style={{ zIndex: 9997 }}>
         <button
           onClick={() => setShowPatch(true)}
           className="section-label px-3 py-2 rounded border transition-all hover:bg-[rgba(212,168,83,0.06)]"
-          style={{ borderColor: 'rgba(212,168,83,0.25)', color: 'rgba(212,168,83,0.7)' }}
+          style={{ borderColor: 'rgba(212,168,83,0.25)', color: 'rgba(212,168,83,0.7)', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
         >
           PATCH NOTES
         </button>
         <button
           onClick={() => setShowManual(true)}
           className="section-label px-3 py-2 rounded border transition-all hover:bg-[rgba(96,165,250,0.06)]"
-          style={{ borderColor: 'rgba(59,130,246,0.3)', color: '#60a5fa' }}
+          style={{ borderColor: 'rgba(59,130,246,0.3)', color: '#60a5fa', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
         >
           MANUAL
         </button>
       </div>
 
       {/* ── Version badge ── */}
-      <div className="fixed bottom-6 left-6" style={{ zIndex: 10 }}>
+      <div className="fixed bottom-6 left-6" style={{ zIndex: 9997 }}>
         <span className="section-label" style={{ color: 'rgba(212,168,83,0.3)' }}>
           {PATCH_NOTES[0]?.version} — MERCADO NEGRO
         </span>

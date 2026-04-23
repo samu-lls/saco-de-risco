@@ -494,6 +494,11 @@ export default function RoomPage() {
       playSuccess();
 
       if (itemId === 'patch') {
+        if (dbMe.hp >= 4) {
+          // HP já no máximo — devolve o item e cancela sem gastar
+          setIsProcessing(false);
+          return;
+        }
         const newHp = Math.min(4, dbMe.hp + 1);
         await supabase.from("players").update({ hp: newHp, inventory: updatedMyInv }).eq("id", me.id);
       } else if (itemId === 'vpn') {
