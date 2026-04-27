@@ -371,11 +371,32 @@ export default function RoomPage() {
   const alivePlayers = players.filter(p => p.hp > 0);
   const isGameOver   = alivePlayers.length === 1 && players.length > 1 && room?.status !== 'lobby';
   const activePlayer = players.find(p => p.id === room?.current_turn_player_id);
+  // Pódium: vencedor primeiro, depois mortos em ordem REVERSA de eliminação
+  // Derivamos a ordem do game_log — cada morte gera um log com o nome do player
   const podium = isGameOver
-    ? [
-        ...alivePlayers,
-        ...[...players.filter(p => p.hp <= 0)].reverse()
-      ]
+    ? (() => {
+        const dead = players.filter(p => p.hp <= 0);
+        const logs: string[] = room?.game_log || [];
+        // Coletar ordem de eliminação do log (primeiro a aparecer = primeiro a morrer = último no pódium)
+        const eliminationOrder: string[] = [];
+        for (const log of logs) {
+          for (const p of dead) {
+            if (
+              (log.includes('💀') && log.includes(p.name) && log.includes('ELIMINADO')) &&
+              !eliminationOrder.includes(p.id)
+            ) {
+              eliminationOrder.push(p.id);
+            }
+          }
+        }
+        // Mortos não encontrados no log (edge case) vão por último
+        for (const p of dead) {
+          if (!eliminationOrder.includes(p.id)) eliminationOrder.push(p.id);
+        }
+        // Pódium: vencedor + mortos do último eliminado para o primeiro
+        const sortedDead = [...eliminationOrder].reverse().map(id => dead.find(p => p.id === id)!).filter(Boolean);
+        return [...alivePlayers, ...sortedDead];
+      })()
     : [];
 
   // ─── getNextAlivePlayer — follows the randomised turn_order stored in rooms ──
@@ -642,8 +663,13 @@ export default function RoomPage() {
       }
 
       if (newBagGreens <= 0 || newBagBlues <= 0 || newBagBatteries <= 0) {
-        newBagGreens += 6; newBagBlues += 4; newBagBatteries += 6;
-        await writeLog(`A IA reabasteceu o Saco com materiais.`);
+        // Reabastecimento proporcional ao número de jogadores vivos
+        const { data: freshForRestock } = await supabase.from("players").select("id,hp").eq("room_id", room.id);
+        const aliveCount = Math.max(2, (freshForRestock || []).filter(p => p.hp > 0).length);
+        newBagGreens    += aliveCount * 3;
+        newBagBlues     += aliveCount * 2;
+        newBagBatteries += aliveCount * 3;
+        await writeLog(`A IA reabasteceu o Saco (${aliveCount} jogadores ativos).`);
       }
 
       let updatedMyInv = [...(dbMe.inventory || [])];
